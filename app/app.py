@@ -1,0 +1,34 @@
+from flask import Flask, jsonify
+import datetime
+import os
+
+app = Flask(__name__)
+
+VERSION = os.environ.get("VERSION", "1.0.0")
+
+@app.route("/")
+def home():
+    return jsonify({
+        "app" : "automate-deploy-platform",
+        "version" : VERSION,
+        "status" : "running"
+    })
+
+@app.route("/health")
+def health():
+    return jsonify({
+        "status" : "healthy",
+        "version" : VERSION,
+        "timestamp" : datetime.datetime.now().isoformat()
+    })
+
+@app.route("/api/status")
+def status():
+    return jsonify({
+        "status" : "ok",
+        "version" : VERSION,
+        "environment" : os.environ.get("APP_ENV", "development"),
+    })
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port = 5000, debug=True)
