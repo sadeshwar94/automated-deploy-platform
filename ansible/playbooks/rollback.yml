@@ -1,0 +1,52 @@
+---
+- name: Rollback to Previous Version
+  hosts: app_servers
+  become: yes
+
+  vars:
+    ecr_registry: "206017086144.dkr.ecr.ap-northeast-3.amazonaws.com"
+    ecr_repository: "automated-deploy-platform"
+    aws_region: "ap-northeast-3"
+    container_name: "flask-app"
+    rollback_tag: "{{ lookup('env', 'ROLLBACK_TAG') | default('latest') }}"
+
+  tasks:
+
+    - name: Login to ECR
+      shell: |
+        aws ecr get-login-password --region {{ aws_region }} | \
+        docker login --username AWS --password-stdin {{ ecr_registry }}
+      changed_when: false
+
+    - name: Pull rollback image
+      docker_image:
+        name: "{{ ecr_registry }}/{{ ecr_repository }}:{{ rollback_tag }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop failed container
+      docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Start rollback container
+      docker_container:
+        name: "{{ container_name }}"
+        image: "{{ ecr_registry }}/{{ ecr_repository }}:{{ rollback_tag }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "5000:5000"
+
+    - name: Verify rollback health
+      uri:
+        url: "http://localhost:5000/health"
+        method: GET
+        status_code: 200
+      retries: 3
+      delay: 5
+
+    - name: Log rollback event
+      debug:
+        msg: "⚠️ Rollback completed — running tag: {{ rollback_tag }}"

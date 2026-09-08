@@ -1,0 +1,62 @@
+---
+- name: Deploy Application to EC2
+  hosts: app_servers
+  become: yes
+
+  vars:
+    ecr_registry: "206017086144.dkr.ecr.ap-northeast-3.amazonaws.com"
+    ecr_repository: "automated-deploy-platform"
+    aws_region: "ap-northeast-3"
+    app_port: 5000
+    container_name: "flask-app"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('latest') }}"
+
+  tasks:
+
+    - name: Login to ECR
+      shell: |
+        aws ecr get-login-password --region {{ aws_region }} | \
+        docker login --username AWS --password-stdin {{ ecr_registry }}
+      changed_when: false
+
+    - name: Pull latest image from ECR
+      docker_image:
+        name: "{{ ecr_registry }}/{{ ecr_repository }}:{{ image_tag }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop existing container
+      docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Start new container
+      docker_container:
+        name: "{{ container_name }}"
+        image: "{{ ecr_registry }}/{{ ecr_repository }}:{{ image_tag }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "5000:5000"
+        env:
+          APP_VERSION: "{{ image_tag }}"
+          APP_ENV: "production"
+
+    - name: Wait for app to be ready
+      wait_for:
+        port: "{{ app_port }}"
+        timeout: 30
+
+    - name: Health check
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_result
+      retries: 3
+      delay: 5
+
+    - name: Confirm deployment success
+      debug:
+        msg: "✅ Deployment successful — {{ health_result.json }}"

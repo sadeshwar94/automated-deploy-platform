@@ -1,0 +1,6 @@
+[app_servers]
+13.208.161.130
+
+[app_servers:vars]
+ansible_ssh_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/deploy-platform-key.pem
