@@ -1,0 +1,63 @@
+name: CD — Deploy to EC2
+
+on:
+  workflow_run:
+    workflows: ["CI — Test and Build"]
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy via Ansible
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy-key.pem
+          chmod 400 ~/.ssh/deploy-key.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+          ansible-galaxy collection install community.docker
+
+      - name: Get image tag
+        id: image
+        run: |
+          echo "tag=$(echo ${{ github.event.workflow_run.head_sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Create Ansible inventory
+        run: |
+          cat > ansible/inventory/hosts << EOF
+          [app_servers]
+          ${{ secrets.EC2_HOST }}
+
+          [app_servers:vars]
+          ansible_user=${{ secrets.EC2_USER }}
+          ansible_ssh_private_key_file=~/.ssh/deploy-key.pem
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+          EOF
+
+      - name: Run deploy playbook
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          cd ansible
+          ansible-playbook playbooks/deploy.yml \
+            --extra-vars "image_tag=$IMAGE_TAG"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          cd ansible
+          ansible-playbook playbooks/rollback.yml \
+            --extra-vars "rollback_tag=latest"
