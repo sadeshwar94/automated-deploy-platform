@@ -1,8 +1,15 @@
 from flask import Flask, jsonify
 import datetime
 import os
+import sys
 
 app = Flask(__name__)
+
+# Required environment variables
+DB_URL = os.environ.get("DATABASE_URL")
+if not DB_URL:
+    print("ERROR: DATABASE_URL environment variable is required.")
+    sys.exit(1)
 
 VERSION = os.environ.get("VERSION", "2.0.0")
 
