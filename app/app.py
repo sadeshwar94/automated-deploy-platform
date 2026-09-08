@@ -6,7 +6,7 @@ import sys
 app = Flask(__name__)
 
 # Required environment variables
-DB_URL = os.environ.get("DATABASE_URL")
+DB_URL = os.environ.get("DATABASE_URL", "sqlite:///default.db")  # Default to a local SQLite database if not provided
 if not DB_URL:
     print("ERROR: DATABASE_URL environment variable is required.")
     sys.exit(1)
