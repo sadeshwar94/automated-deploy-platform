@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-VERSION = os.environ.get("VERSION", "1.0.0")
+VERSION = os.environ.get("VERSION", "2.0.0")
 
 @app.route("/")
 def home():
