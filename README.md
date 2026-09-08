@@ -48,8 +48,8 @@ automated-deploy-platform/
 ```
 
 ## Phases
-- [ ] Phase 1: Flask app + Pytest
-- [ ] Phase 2: Docker + AWS ECR
-- [ ] Phase 3: GitHub Actions CI pipeline
-- [ ] Phase 4: Ansible deployment + rollback
-- [ ] Phase 5: Failure scenarios + troubleshooting
+✅ Phase 1 — Flask app + Pytest
+✅ Phase 2 — Docker + AWS ECR
+✅ Phase 3 — GitHub Actions CI pipeline
+✅ Phase 4 — Ansible deployment + auto rollback
+⬜ Phase 5 — Failure scenarios + troubleshooting
